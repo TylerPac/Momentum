@@ -1,78 +1,119 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                spec:
+                  containers:
+                    - name: kaniko
+                      image: gcr.io/kaniko-project/executor:debug
+                      command: ["sleep"]
+                      args: ["99d"]
+                      securityContext:
+                        runAsUser: 0
+                        privileged: true
+                      volumeMounts:
+                        - name: ghcr-docker-config
+                          mountPath: /kaniko/.docker
+                    - name: git
+                      image: alpine/git:2.45.2
+                      command: ["sleep"]
+                      args: ["99d"]
+                      env:
+                        - name: GH_TOKEN
+                          valueFrom:
+                            secretKeyRef:
+                              name: github-pat
+                              key: token
+                  volumes:
+                    - name: ghcr-docker-config
+                      secret:
+                        secretName: ghcr-docker-config
+                        items:
+                          - key: .dockerconfigjson
+                            path: config.json
+            '''
+        }
+    }
+
+    environment {
+        BACKEND_IMAGE = "ghcr.io/tylerpac/momentum-backend"
+        FRONTEND_IMAGE = "ghcr.io/tylerpac/momentum-frontend"
+    }
 
     stages {
-        stage('Build and Test') {
+        stage('Checkout') {
             steps {
-                echo "Building and testing Momentum branch: ${env.BRANCH_NAME}"
-
-                withCredentials([
-                    string(credentialsId: 'MOMENTUM_DB_NAME', variable: 'MOMENTUM_DB_NAME'),
-                    string(credentialsId: 'MOMENTUM_DB_USER', variable: 'MOMENTUM_DB_USER'),
-                    string(credentialsId: 'MOMENTUM_DB_PASSWORD', variable: 'MOMENTUM_DB_PASSWORD'),
-                    string(credentialsId: 'MOMENTUM_JWT_SECRET', variable: 'MOMENTUM_JWT_SECRET')
-                ]) {
-                    sh 'docker compose build --pull'
-                }
-
-                sh '''
-                    echo "Checking backend from Jenkins:"
-                    ls -la "$PWD/backend"
-                    test -f "$PWD/backend/pom.xml"
-
-                    docker run --rm \
-                        --volumes-from "$HOSTNAME" \
-                        -w "$PWD/backend" \
-                        maven:3.9-eclipse-temurin-21 \
-                        mvn -q test
-                '''
-            }
-        }
-
-        stage('Deploy Production') {
-            when {
-                branch 'master'
-            }
-
-            steps {
-                echo "Deploying Momentum to production..."
-
-                withCredentials([
-                    string(credentialsId: 'MOMENTUM_DB_NAME', variable: 'MOMENTUM_DB_NAME'),
-                    string(credentialsId: 'MOMENTUM_DB_USER', variable: 'MOMENTUM_DB_USER'),
-                    string(credentialsId: 'MOMENTUM_DB_PASSWORD', variable: 'MOMENTUM_DB_PASSWORD'),
-                    string(credentialsId: 'MOMENTUM_JWT_SECRET', variable: 'MOMENTUM_JWT_SECRET')
-                ]) {
-                    sh 'docker compose -p momentum-production down --remove-orphans || true'
-                    sh 'docker compose -p momentum-production build --pull'
-                    sh 'docker compose -p momentum-production up -d'
+                container('git') {
+                    checkout scm
                 }
             }
         }
 
-        stage('Cleanup Branch Docker Artifacts') {
-            when {
-                not {
-                    branch 'master'
+        stage('Build & Push Backend') {
+            steps {
+                container('kaniko') {
+                    sh '''
+                        SHORT_SHA=$(echo "$GIT_COMMIT" | cut -c1-7)
+                        /kaniko/executor \
+                            --context=dir://$(pwd)/backend \
+                            --dockerfile=Dockerfile \
+                            --destination=$BACKEND_IMAGE:$SHORT_SHA \
+                            --destination=$BACKEND_IMAGE:latest
+                    '''
                 }
             }
+        }
 
+        stage('Build & Push Frontend') {
             steps {
-                echo "Cleaning up Docker artifacts from non-master branch build..."
+                container('kaniko') {
+                    sh '''
+                        SHORT_SHA=$(echo "$GIT_COMMIT" | cut -c1-7)
+                        /kaniko/executor \
+                            --context=dir://$(pwd)/frontend \
+                            --dockerfile=Dockerfile \
+                            --destination=$FRONTEND_IMAGE:$SHORT_SHA \
+                            --destination=$FRONTEND_IMAGE:latest
+                    '''
+                }
+            }
+        }
 
-                // Safe cleanup: only dangling images and stale build cache.
-                sh 'docker image prune -f'
-                sh 'docker builder prune -f --filter "until=24h"'
+        stage('Update GitOps repo') {
+            steps {
+                container('git') {
+                    sh '''
+                        SHORT_SHA=$(echo "$GIT_COMMIT" | cut -c1-7)
+
+                        git clone https://x-access-token:$GH_TOKEN@github.com/TylerPac/VPSInfrastructure.git infra
+                        cd infra/manifests/momentum
+
+                        sed -i "s#image: ghcr.io/tylerpac/momentum-backend:.*#image: ghcr.io/tylerpac/momentum-backend:$SHORT_SHA#" backend-deployment.yaml
+                        sed -i "s#image: ghcr.io/tylerpac/momentum-frontend:.*#image: ghcr.io/tylerpac/momentum-frontend:$SHORT_SHA#" frontend-deployment.yaml
+
+                        git config user.email "jenkins@tylerpac.dev"
+                        git config user.name "Jenkins"
+
+                        if git diff --quiet; then
+                            echo "No change to deploy."
+                        else
+                            git commit -am "Deploy momentum $SHORT_SHA"
+                            git push
+                        fi
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline successful for branch: ${env.BRANCH_NAME}"
+            echo "Built ${BACKEND_IMAGE}:latest and ${FRONTEND_IMAGE}:latest and updated VPSInfrastructure - Argo CD will roll it out."
         }
         failure {
-            echo "Pipeline failed for branch: ${env.BRANCH_NAME}"
+            echo "Pipeline failed."
         }
     }
 }
