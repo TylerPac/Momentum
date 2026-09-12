@@ -6,7 +6,20 @@ pipeline {
                 kind: Pod
                 spec:
                   containers:
-                    - name: kaniko
+                    # Kaniko builds by mutating its own container's root filesystem -
+                    # a second build in the same container starts on a filesystem the
+                    # first build already overwrote, so each image gets its own container.
+                    - name: kaniko-backend
+                      image: gcr.io/kaniko-project/executor:debug
+                      command: ["sleep"]
+                      args: ["99d"]
+                      securityContext:
+                        runAsUser: 0
+                        privileged: true
+                      volumeMounts:
+                        - name: ghcr-docker-config
+                          mountPath: /kaniko/.docker
+                    - name: kaniko-frontend
                       image: gcr.io/kaniko-project/executor:debug
                       command: ["sleep"]
                       args: ["99d"]
@@ -53,7 +66,7 @@ pipeline {
 
         stage('Build & Push Backend') {
             steps {
-                container('kaniko') {
+                container('kaniko-backend') {
                     sh '''
                         SHORT_SHA=$(echo "$GIT_COMMIT" | cut -c1-7)
                         /kaniko/executor \
@@ -68,7 +81,7 @@ pipeline {
 
         stage('Build & Push Frontend') {
             steps {
-                container('kaniko') {
+                container('kaniko-frontend') {
                     sh '''
                         SHORT_SHA=$(echo "$GIT_COMMIT" | cut -c1-7)
                         /kaniko/executor \
