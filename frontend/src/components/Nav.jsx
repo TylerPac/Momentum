@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { clearAccessToken } from '../api';
+import { signOut } from '../api';
 import { useAuth } from '../auth';
 import '../styles/components/Nav.css';
 
@@ -19,10 +19,13 @@ export default function Nav() {
   }, [user]);
 
   async function onLogout() {
-    clearAccessToken();
-    setUser(null);
     setMobileOpen(false);
-    navigate('/', { replace: true });
+    try {
+      await signOut();
+    } catch {
+      setUser(null);
+      navigate('/', { replace: true });
+    }
   }
 
   function toggleMobileMenu() {

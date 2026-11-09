@@ -1,5 +1,5 @@
 import React from 'react';
-import { apiFetch, clearAccessToken, getAccessToken } from './api';
+import { apiFetch } from './api';
 
 const AuthContext = React.createContext(null);
 
@@ -8,18 +8,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = React.useState(true);
 
   const refresh = React.useCallback(async () => {
-    const token = getAccessToken();
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const me = await apiFetch('/auth/me');
       setUser(me);
     } catch {
-      clearAccessToken();
       setUser(null);
     } finally {
       setLoading(false);

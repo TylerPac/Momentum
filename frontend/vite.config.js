@@ -19,6 +19,12 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET ?? 'http://localhost:8085',
         changeOrigin: true,
       },
+      '/oauth2/authorization': {
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:8085',
+      },
+      '/login/oauth2': {
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:8085',
+      },
       '/media': {
         target: process.env.VITE_API_TARGET ?? 'http://localhost:8085',
         changeOrigin: true,

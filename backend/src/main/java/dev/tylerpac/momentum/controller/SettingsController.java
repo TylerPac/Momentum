@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import dev.tylerpac.momentum.dto.settings.SettingsActionResponse;
-import dev.tylerpac.momentum.dto.settings.SettingsPasswordUpdateRequest;
 import dev.tylerpac.momentum.dto.settings.SettingsUnitSystemUpdateRequest;
 import dev.tylerpac.momentum.dto.settings.SettingsUsernameUpdateRequest;
 import dev.tylerpac.momentum.dto.common.UserDto;
@@ -28,7 +26,6 @@ import dev.tylerpac.momentum.mapper.UserDtoMapper;
 import dev.tylerpac.momentum.model.Users;
 import dev.tylerpac.momentum.repository.UsersRepository;
 import dev.tylerpac.momentum.repository.WorkoutRepository;
-import dev.tylerpac.momentum.security.JwtService;
 import dev.tylerpac.momentum.units.UnitSystem;
 import dev.tylerpac.momentum.validation.ValidationRules;
 
@@ -38,22 +35,16 @@ public class SettingsController {
 
     private final UsersRepository usersRepository;
     private final WorkoutRepository workoutRepository;
-    private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper userDtoMapper;
-    private final JwtService jwtService;
 
     public SettingsController(
             UsersRepository usersRepository,
             WorkoutRepository workoutRepository,
-            PasswordEncoder passwordEncoder,
-            UserDtoMapper userDtoMapper,
-            JwtService jwtService
+            UserDtoMapper userDtoMapper
     ) {
         this.usersRepository = usersRepository;
         this.workoutRepository = workoutRepository;
-        this.passwordEncoder = passwordEncoder;
         this.userDtoMapper = userDtoMapper;
-        this.jwtService = jwtService;
     }
 
     @GetMapping("/me")
@@ -107,35 +98,11 @@ public class SettingsController {
         try {
             Users saved = usersRepository.save(user);
 
-            // IMPORTANT: JWT subject is the username. If the username changes, we must
-            // issue a new token so the client stays authenticated.
-                String accessToken = jwtService.generateToken(saved.getUsername());
-
-            return new SettingsActionResponse(true, "Username updated", null, userDtoMapper.toDto(saved), accessToken);
+            return new SettingsActionResponse(true, "Username updated", null, userDtoMapper.toDto(saved), null);
         } catch (DataIntegrityViolationException ex) {
             // In case the DB collation/constraints treat usernames differently than the existsByUsername check.
             throw new ValidationException(HttpStatus.CONFLICT, "Username already taken", Map.of("newUsername", "Username already taken"));
         }
-    }
-
-    @PostMapping("/security/password")
-    public SettingsActionResponse updatePassword(@RequestBody SettingsPasswordUpdateRequest req, Authentication authentication) {
-        Users user = requireUser(authentication);
-
-        String currentPassword = req != null && req.currentPassword() != null ? req.currentPassword() : "";
-        if (currentPassword.isBlank() || !passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new ValidationException(HttpStatus.UNAUTHORIZED, "Current password is incorrect", Map.of("currentPassword", "Incorrect password"));
-        }
-
-        String newPassword = req != null && req.newPassword() != null ? req.newPassword() : "";
-        String passwordError = ValidationRules.passwordError(newPassword);
-        if (passwordError != null) {
-            throw new ValidationException(HttpStatus.BAD_REQUEST, "Password does not meet requirements", Map.of("newPassword", passwordError));
-        }
-
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        Users saved = usersRepository.save(user);
-        return new SettingsActionResponse(true, "Password updated", null, userDtoMapper.toDto(saved), null);
     }
 
     @PostMapping("/preferences/unit-system")
@@ -183,7 +150,7 @@ public class SettingsController {
         if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not signed in");
         }
-        Users user = usersRepository.findByUsername(authentication.getName())
+        Users user = usersRepository.findByExternalSubject(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not signed in"));
         return Objects.requireNonNull(user, "Authenticated user lookup returned null");
     }

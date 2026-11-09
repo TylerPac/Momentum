@@ -165,7 +165,7 @@ public class DashboardController {
         if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not signed in");
         }
-        return usersRepository.findByUsername(authentication.getName())
+        return usersRepository.findByExternalSubject(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not signed in"));
     }
 

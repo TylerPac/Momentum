@@ -1,36 +1,20 @@
-const ACCESS_TOKEN_KEY = 'accessToken';
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
-export function getAccessToken() {
-  try {
-    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
-  } catch {
-    return null;
-  }
+function csrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
-export function setAccessToken(token) {
-  try {
-    if (!token) {
-      sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    } else {
-      sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
-    }
-  } catch {
-    // ignore
-  }
-}
-
-export function clearAccessToken() {
-  setAccessToken(null);
-}
+export const SIGN_IN_URL = '/oauth2/authorization/shared';
 
 export async function apiFetch(path, options = {}) {
   const url = path.startsWith('/api') ? path : `/api${path}`;
 
   const headers = new Headers(options.headers || {});
-  const token = getAccessToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+  const method = (options.method || 'GET').toUpperCase();
+  const csrf = csrfToken();
+  if (csrf && !SAFE_METHODS.includes(method)) {
+    headers.set('X-XSRF-TOKEN', csrf);
   }
 
   const isFormData = (typeof FormData !== 'undefined') && (options.body instanceof FormData);
@@ -41,6 +25,7 @@ export async function apiFetch(path, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: 'same-origin',
   });
 
   if (!res.ok) {
@@ -66,4 +51,10 @@ export async function apiFetch(path, options = {}) {
   }
 
   return null;
+}
+
+// Ends this app's session, then the shared sign-in, and returns to the home page
+export async function signOut() {
+  const result = await apiFetch('/auth/logout', { method: 'POST' });
+  window.location.assign(result?.logoutUrl || '/');
 }

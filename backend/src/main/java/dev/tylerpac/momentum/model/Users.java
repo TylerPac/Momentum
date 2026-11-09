@@ -23,6 +23,10 @@ public class Users {
     @Column(name = "password", nullable = false)
     private String password;
 
+    // The shared login account this person signs in with
+    @Column(name = "external_subject", unique = true, length = 191)
+    private String externalSubject;
+
     @Column(name = "unit_system", nullable = false)
     private String unitSystem = UnitSystem.METRIC;
 
@@ -38,6 +42,14 @@ public class Users {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getExternalSubject() {
+        return externalSubject;
+    }
+
+    public void setExternalSubject(String externalSubject) {
+        this.externalSubject = externalSubject;
     }
 
     public String getPassword() {
