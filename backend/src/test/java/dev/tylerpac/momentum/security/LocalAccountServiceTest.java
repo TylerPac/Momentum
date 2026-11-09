@@ -26,6 +26,7 @@ class LocalAccountServiceTest {
     @BeforeEach
     void savesReturnTheEntity() {
         when(users.saveAndFlush(any(Users.class))).thenAnswer(call -> call.getArgument(0));
+        when(users.findByUsername(any())).thenReturn(Optional.empty());
     }
 
     private Users created() {
@@ -34,12 +35,53 @@ class LocalAccountServiceTest {
         return saved.getValue();
     }
 
+    private static Users account(int id, String username) {
+        Users user = mock(Users.class);
+        when(user.getUserId()).thenReturn(id);
+        when(user.getUsername()).thenReturn(username);
+        return user;
+    }
+
     @Test
-    void anExistingAccountIsReused() {
-        Users existing = new Users();
+    void anUnchangedNameDoesNotWrite() {
+        Users existing = account(1, "Name");
         when(users.findByExternalSubject("sub-1")).thenReturn(Optional.of(existing));
+        when(users.findByUsername("Name")).thenReturn(Optional.of(existing));
+
         assertSame(existing, service.ensureAccount("sub-1", "Name"));
         verify(users, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void aChangedNameUpdatesTheUsername() {
+        Users existing = new Users();
+        existing.setUsername("Steamuser4762");
+        when(users.findByExternalSubject("sub-1")).thenReturn(Optional.of(existing));
+
+        service.ensureAccount("sub-1", "Sir Pacster");
+        assertEquals("SirPacster", created().getUsername());
+    }
+
+    @Test
+    void aNumberedUsernameStaysStableAcrossSignIns() {
+        Users self = account(1, "Alex2");
+        when(users.findByExternalSubject("sub-1")).thenReturn(Optional.of(self));
+        Users other = account(2, "Alex");
+        when(users.findByUsername("Alex")).thenReturn(Optional.of(other));
+        when(users.findByUsername("Alex2")).thenReturn(Optional.of(self));
+
+        service.ensureAccount("sub-1", "Alex");
+        verify(users, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void losingARenameRaceKeepsTheCurrentName() {
+        Users existing = new Users();
+        existing.setUsername("Old_Name");
+        when(users.findByExternalSubject("sub-1")).thenReturn(Optional.of(existing));
+        when(users.saveAndFlush(any(Users.class))).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertEquals("Old_Name", service.ensureAccount("sub-1", "New Name").getUsername());
     }
 
     @Test
@@ -60,7 +102,8 @@ class LocalAccountServiceTest {
     void takenUsernamesGetANumberWithinTheLengthLimit() {
         String twenty = "abcdefghijklmnopqrst";
         when(users.findByExternalSubject("sub-1")).thenReturn(Optional.empty());
-        when(users.existsByUsername(twenty)).thenReturn(true);
+        Users other = account(2, twenty);
+        when(users.findByUsername(twenty)).thenReturn(Optional.of(other));
         service.ensureAccount("sub-1", twenty);
         assertEquals("abcdefghijklmnopqrs2", created().getUsername());
     }
