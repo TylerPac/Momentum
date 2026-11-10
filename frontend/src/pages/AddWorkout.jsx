@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../auth';
-import '../styles/pages/AddWorkout.css';
 import { parsePartsToMinutes, splitMinutesToParts } from '../utils/duration';
 import { usePageMeta } from '../utils/pageMeta';
 import { useToast } from '../utils/toast';
@@ -138,9 +137,14 @@ export default function AddWorkout() {
   return (
     <div className="main-content">
       <div className="page page-narrow">
-        <h2>Add a New Workout</h2>
+        <header className="page-head">
+          <div>
+            <p className="kicker">Log a session</p>
+            <h2>Add a New Workout</h2>
+          </div>
+        </header>
         {error ? <div className="error-message">{error}</div> : null}
-        {namesLoading ? <div style={{ padding: '8px 0', opacity: 0.8 }}>Loading workout names…</div> : null}
+        {namesLoading ? <div className="loading-line">Loading workout names…</div> : null}
 
         <form onSubmit={onSubmit} className="workout-form">
           <label>
@@ -196,7 +200,7 @@ export default function AddWorkout() {
             </>
           ) : (
             <>
-              <div style={{ fontWeight: 700, marginBottom: -4 }}>Sets</div>
+              <div className="form-section-label">Sets</div>
               <div className="set-list">
                 {setRows.map((row, i) => (
                   <div key={row.id} className="set-row">

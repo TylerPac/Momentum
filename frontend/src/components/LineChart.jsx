@@ -8,7 +8,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import '../styles/components/LineChart.css';
 
 function toNumber(value) {
   return Number.isFinite(value) ? value : 0;
@@ -95,7 +94,17 @@ function ChartTooltip({ active, payload, label }) {
   );
 }
 
-export default function LineChart({ title, labels, values, yLabel, yAxisLabel, yTickMin, yTickStep, accentVar = '--color-accent' }) {
+// SVG attributes set by recharts don't reliably resolve CSS variables, so read the token's value once
+function useCssColor(varName, fallback) {
+  const [color, setColor] = React.useState(fallback);
+  React.useEffect(() => {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    if (value) setColor(value);
+  }, [varName]);
+  return color;
+}
+
+export default function LineChart({ title, labels, values, yLabel, yAxisLabel, yTickMin, yTickStep, accentVar = '--blue' }) {
   const [isMobile, setIsMobile] = React.useState(false);
 
   React.useEffect(() => {
@@ -120,10 +129,13 @@ export default function LineChart({ title, labels, values, yLabel, yAxisLabel, y
 
   const yScale = React.useMemo(() => buildYScale(values, yTickMin, yTickStep), [values, yTickMin, yTickStep]);
   const gradientId = `chart-gradient-${React.useId().replace(/:/g, '')}`;
-  const accentColor = `var(${accentVar})`;
+  const accentColor = useCssColor(accentVar, '#2f8cff');
+  const lineColor = useCssColor('--line', '#1d2834');
+  const mutedColor = useCssColor('--muted', '#8a9aab');
+  const inkColor = useCssColor('--ink', '#070b10');
 
   return (
-    <div className="chart-card">
+    <div className="chart-card" style={{ '--chart-accent': accentColor }}>
       <div className="chart-card__header">
         <div className="chart-card__title">{title}</div>
         <div className="chart-card__meta">{yLabel}</div>
@@ -142,43 +154,43 @@ export default function LineChart({ title, labels, values, yLabel, yAxisLabel, y
                 </linearGradient>
               </defs>
 
-              <CartesianGrid stroke="var(--color-border)" vertical={false} />
+              <CartesianGrid stroke={lineColor} vertical={false} />
               <XAxis
                 dataKey="shortLabel"
-                tick={{ fill: 'var(--color-placeholder)', fontSize: 11, fontWeight: 700 }}
-                axisLine={{ stroke: 'var(--color-border)' }}
-                tickLine={{ stroke: 'var(--color-border)' }}
+                tick={{ fill: mutedColor, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' }}
+                axisLine={{ stroke: lineColor }}
+                tickLine={{ stroke: lineColor }}
                 minTickGap={24}
               />
               <YAxis
                 domain={[yScale.min, yScale.max]}
                 ticks={yScale.ticks}
                 tickFormatter={formatValue}
-                tick={{ fill: 'var(--color-placeholder)', fontSize: 11, fontWeight: 700 }}
-                axisLine={{ stroke: 'var(--color-border)' }}
-                tickLine={{ stroke: 'var(--color-border)' }}
+                tick={{ fill: mutedColor, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' }}
+                axisLine={{ stroke: lineColor }}
+                tickLine={{ stroke: lineColor }}
                 width={isMobile ? 46 : 68}
                 label={isMobile ? undefined : {
                   value: yAxisLabel ?? yLabel,
                   angle: -90,
                   position: 'insideLeft',
-                  fill: 'var(--color-placeholder)',
-                  style: { fontSize: 12, fontWeight: 700 },
+                  fill: mutedColor,
+                  style: { fontSize: 11, fontFamily: 'IBM Plex Mono, monospace', letterSpacing: '0.06em' },
                 }}
               />
               <Tooltip
                 content={<ChartTooltip />}
-                cursor={{ stroke: 'var(--color-border)', strokeDasharray: '4 4' }}
+                cursor={{ stroke: lineColor, strokeDasharray: '4 4' }}
                 labelFormatter={(v, payload) => payload?.[0]?.payload?.label || String(v || '')}
               />
               <Area
                 type="monotone"
                 dataKey="value"
                 stroke={accentColor}
-                strokeWidth={3}
+                strokeWidth={2.5}
                 fill={`url(#${gradientId})`}
                 dot={{ r: 3, strokeWidth: 0, fill: accentColor }}
-                activeDot={{ r: 5, stroke: 'var(--color-bg-1)', strokeWidth: 1.5, fill: accentColor }}
+                activeDot={{ r: 5, stroke: inkColor, strokeWidth: 1.5, fill: accentColor }}
               />
             </AreaChart>
           </ResponsiveContainer>

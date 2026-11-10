@@ -2,7 +2,6 @@ import React from 'react';
 import { apiFetch } from '../api';
 import { useAuth } from '../auth';
 import LineChart from '../components/LineChart';
-import '../styles/pages/Dashboard.css';
 import { formatMinutesAsClock } from '../utils/duration';
 import { usePageMeta } from '../utils/pageMeta';
 import { formatDisplayNumber, getUnitPreference } from '../utils/units';
@@ -73,17 +72,35 @@ export default function Dashboard() {
   const graph1Title = isCardio ? 'Pace' : 'Weight';
   const graph2Title = isCardio ? `Distance per run (${distanceUnit})` : 'Volume';
 
-  const graph1AccentVar = isCardio ? '--color-accent' : '--color-accent-2';
-  const graph2AccentVar = isCardio ? '--color-accent-2' : '--color-accent-3';
+  const graph1AccentVar = isCardio ? '--blue' : '--teal';
+  const graph2AccentVar = isCardio ? '--teal' : '--orange';
 
   const graph1AxisLabel = isCardio ? `Pace (${paceUnit})` : `Weight (${weightUnit})`;
   const graph2AxisLabel = isCardio ? `Distance (${distanceUnit})` : `Volume (${weightUnit})`;
 
+  const graph1Unit = isCardio ? paceUnit : weightUnit;
+  const graph1Numbers = (data?.graph1Values || []).map(Number).filter(Number.isFinite);
+  const latestValue = graph1Numbers.length ? graph1Numbers[graph1Numbers.length - 1] : null;
+  const firstValue = graph1Numbers.length ? graph1Numbers[0] : null;
+  // Lower pace is better for cardio; higher weight is better for lifting
+  const bestValue = graph1Numbers.length ? (isCardio ? Math.min(...graph1Numbers) : Math.max(...graph1Numbers)) : null;
+  const change = latestValue != null && graph1Numbers.length > 1 ? latestValue - firstValue : null;
+  const improved = change != null && (isCardio ? change < 0 : change > 0);
+  const formatGraph1 = (v) => (v == null ? '—' : isCardio ? formatMinutesAsClock(v) : formatDisplayNumber(v));
+  const formatChange = (v) => {
+    const sign = v > 0 ? '+' : v < 0 ? '−' : '±';
+    return `${sign}${formatGraph1(Math.abs(v))}`;
+  };
+
   return (
     <div className="main-content">
-      <h2 className="page-title page-title--dashboard">Dashboard</h2>
-      {error ? <div className="error-message">{error}</div> : null}
-      
+      <div className="page">
+      <header className="page-head">
+        <div>
+          <p className="kicker">Performance</p>
+          <h2 className="page-title page-title--dashboard">Dashboard</h2>
+        </div>
+
       <div className="dashboard-controls">
         <div className="dashboard-control">
           <div className="date-range-toggle">
@@ -145,6 +162,40 @@ export default function Dashboard() {
           </select>
         </div>
       </div>
+      </header>
+
+      {error ? <div className="error-message">{error}</div> : null}
+
+      <div className="dashboard-summary dashboard-kpi-grid">
+        <div className="dashboard-kpi-card">
+          <div className="dashboard-kpi-card__label">Total workouts</div>
+          <div className="dashboard-kpi-card__value">{data?.totalWorkouts ?? 0}</div>
+          <div className="dashboard-kpi-card__sub">All types logged</div>
+        </div>
+        <div className="dashboard-kpi-card">
+          <div className="dashboard-kpi-card__label">Latest {graph1Title}</div>
+          <div className="dashboard-kpi-card__value">
+            {formatGraph1(latestValue)}
+            {latestValue != null ? <small>{graph1Unit}</small> : null}
+          </div>
+          <div className={`dashboard-kpi-card__sub ${change == null || change === 0 ? '' : improved ? 'up' : 'down'}`}>
+            {change == null ? (workoutName || 'No data yet') : `${formatChange(change)} over this range`}
+          </div>
+        </div>
+        <div className="dashboard-kpi-card">
+          <div className="dashboard-kpi-card__label">Best {graph1Title}</div>
+          <div className="dashboard-kpi-card__value">
+            {formatGraph1(bestValue)}
+            {bestValue != null ? <small>{graph1Unit}</small> : null}
+          </div>
+          <div className="dashboard-kpi-card__sub">{workoutName || 'All workouts'} · {workoutType || 'All'}</div>
+        </div>
+        <div className="dashboard-kpi-card">
+          <div className="dashboard-kpi-card__label">Latest workout</div>
+          <div className="dashboard-kpi-card__value dashboard-kpi-card__value--text">{data?.latestWorkout?.workoutName || '—'}</div>
+          <div className="dashboard-kpi-card__sub">{data?.latestWorkout?.workoutDate || '—'}</div>
+        </div>
+      </div>
 
       <div className="dashboard-charts">
         <LineChart
@@ -164,26 +215,8 @@ export default function Dashboard() {
           accentVar={graph2AccentVar}
         />
       </div>
-      <div className="dashboard-summary dashboard-kpi-grid">
-        <div className="dashboard-kpi-card">
-          <div className="dashboard-kpi-card__label">Total workouts</div>
-          <div className="dashboard-kpi-card__value">{data?.totalWorkouts ?? 0}</div>
-        </div>
-        <div className="dashboard-kpi-card">
-          <div className="dashboard-kpi-card__label">Latest workout</div>
-          <div className="dashboard-kpi-card__value">{data?.latestWorkout?.workoutName || '—'}</div>
-        </div>
-        <div className="dashboard-kpi-card">
-          <div className="dashboard-kpi-card__label">Focus type</div>
-          <div className="dashboard-kpi-card__value">{workoutType || 'All'}</div>
-        </div>
-        <div className="dashboard-kpi-card">
-          <div className="dashboard-kpi-card__label">Focus name</div>
-          <div className="dashboard-kpi-card__value">{workoutName || 'All workouts'}</div>
-        </div>
-      </div>      
       {loading ? (
-        <div style={{ padding: '8px 0', opacity: 0.8 }}>Loading dashboard…</div>
+        <div className="loading-line">Loading dashboard…</div>
       ) : null}
 
       <h3 className="dashboard-section-title">Workout Details</h3>
@@ -237,6 +270,7 @@ export default function Dashboard() {
             ) : null}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );

@@ -2,8 +2,8 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { SIGN_IN_URL } from '../api';
 import { useAuth } from '../auth';
+import Brand from '../components/Brand';
 import { usePageMeta } from '../utils/pageMeta';
-import '../styles/pages/SignIn.css';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -29,12 +29,14 @@ export default function SignIn() {
     <div className="signin-page">
       <div className="signin-content">
         <Link className="signin-logo-link" to="/" aria-label="Go to home page">
-          <img className="signin-logo" src="/MomentumLogo.png" alt="Momentum logo" />
+          <Brand size="lg" />
         </Link>
-        <div className="login-form" style={{ width: 'min(420px, 90vw)' }}>
+        <div className="login-form">
+          <p className="kicker">Welcome back</p>
+          <h1 className="login-form__title">Sign in</h1>
           {failed ? <div className="error-message">Sign-in could not be completed. Please try again.</div> : null}
           <div className="button-group">
-            <a className="btn-login" href={SIGN_IN_URL} style={{ textAlign: 'center', textDecoration: 'none' }}>
+            <a className="btn-login" href={SIGN_IN_URL}>
               Sign in or create an account
             </a>
           </div>

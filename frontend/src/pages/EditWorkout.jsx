@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../auth';
-import '../styles/pages/EditWorkout.css';
 import { parsePartsToMinutes, splitMinutesToParts } from '../utils/duration';
 import { usePageMeta } from '../utils/pageMeta';
 import { useToast } from '../utils/toast';
@@ -106,7 +105,12 @@ export default function EditWorkout() {
   return (
     <div className="main-content">
       <div className="page page-narrow">
-        <h2>Edit Workout</h2>
+        <header className="page-head">
+          <div>
+            <p className="kicker">Training log</p>
+            <h2>Edit Workout</h2>
+          </div>
+        </header>
         {error ? <div className="error-message">{error}</div> : null}
 
         <form onSubmit={onSubmit} className="workout-form">

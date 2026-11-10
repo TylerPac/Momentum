@@ -16,7 +16,7 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
   if (loading) {
-    return <div style={{ padding: 16 }}>Loading…</div>;
+    return <div className="loading-line" style={{ padding: 16 }}>Loading…</div>;
   }
   if (!user) {
     return <Navigate to="/signin" replace />;
@@ -55,7 +55,7 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
         <Layout>
-          <React.Suspense fallback={<div style={{ padding: 16 }}>Loading…</div>}>
+          <React.Suspense fallback={<div className="loading-line" style={{ padding: 16 }}>Loading…</div>}>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/signin" element={<SignIn />} />

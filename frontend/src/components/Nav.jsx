@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from '../api';
 import { useAuth } from '../auth';
-import '../styles/components/Nav.css';
+import Brand from './Brand';
 
 export default function Nav() {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ export default function Nav() {
     <nav className="sidebar" aria-label="Primary">
       <div className="sidebar-header">
         <Link className="sidebar-logo-link" to="/" aria-label="Go to home page">
-          <img className="sidebar-logo-img" src="/MomentumLogo.png" alt="Momentum logo" />
+          <Brand />
         </Link>
 
         <button
@@ -87,7 +87,7 @@ export default function Nav() {
         <div className="mobile-menu__content" role="dialog" aria-label="Menu">
           <div className="mobile-menu__header">
             <Link className="mobile-menu__brand" to="/" aria-label="Go to home page" onClick={closeMobileMenu}>
-              <img className="mobile-menu__logo" src="/MomentumLogo.png" alt="Momentum logo" />
+              <Brand />
             </Link>
             <button
               type="button"

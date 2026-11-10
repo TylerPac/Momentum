@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { useAuth } from '../auth';
-import '../styles/pages/History.css';
 import { formatMinutesAsClock } from '../utils/duration';
 import { usePageMeta } from '../utils/pageMeta';
 import { useToast } from '../utils/toast';
@@ -100,11 +99,16 @@ export default function History() {
   return (
     <div className="main-content">
       <div className="page">
-        <h2>Workout History</h2>
+        <header className="page-head">
+          <div>
+            <p className="kicker">Training log</p>
+            <h2>Workout History</h2>
+          </div>
+        </header>
         {error ? <div className="error-message">{error}</div> : null}
 
         <div className="history-filters">
-          <label style={{ flex: 2, minWidth: 180 }}>
+          <label>
             Search
             <input
               type="text"
@@ -131,7 +135,7 @@ export default function History() {
           </label>
         </div>
 
-        {loading ? <div style={{ padding: '8px 0', opacity: 0.8 }}>Loading…</div> : null}
+        {loading ? <div className="loading-line">Loading…</div> : null}
 
         {!loading && items.length === 0 ? (
           <div className="empty-state">
@@ -164,14 +168,18 @@ export default function History() {
                     </tr>
                     {grouped.get(date).map((w) => (
                       <tr key={w.workoutId}>
-                        <td>{w.workoutType}</td>
+                        <td>
+                          <span className={`workout-type-badge workout-type-badge--${String(w.workoutType || '').toLowerCase()}`}>
+                            {w.workoutType}
+                          </span>
+                        </td>
                         <td>{w.workoutName}</td>
                         <td>{formatDisplayNumber(w.distance)}</td>
                         <td>{w.workoutType === 'Cardio' ? formatMinutesAsClock(w.time) : (w.time ?? '')}</td>
                         <td>{formatDisplayNumber(w.weight)}</td>
                         <td>{w.sets ?? ''}</td>
                         <td>{w.reps ?? ''}</td>
-                        <td style={{ maxWidth: 180, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.85rem' }}>{w.notes || ''}</td>
+                        <td className="notes-cell">{w.notes || ''}</td>
                         <td>
                           {pendingDelete === w.workoutId ? (
                             <InlineConfirm

@@ -1,8 +1,6 @@
 import React from 'react';
 import { apiFetch, signOut } from '../api';
 import { useAuth } from '../auth';
-import '../styles/pages/Settings.css';
-import '../styles/pages/WorkoutForms.css';
 import { usePageMeta } from '../utils/pageMeta';
 import { getUnitPreference } from '../utils/units';
 
@@ -71,8 +69,13 @@ export default function Settings() {
   return (
     <div className="main-content">
       <div className="page page-narrow settings-page">
-        <h2>Settings</h2>
-        <p className="settings-page__subtitle">Manage your account security and data.</p>
+        <header className="page-head">
+          <div>
+            <p className="kicker">Account</p>
+            <h2>Settings</h2>
+            <p className="settings-page__subtitle">Manage your account security and data.</p>
+          </div>
+        </header>
 
         <div className="settings-card">
           <div className="settings-card__title">Units</div>

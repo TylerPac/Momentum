@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import HomeHeader from '../components/HomeHeader';
 import { useAuth } from '../auth';
-import '../styles/pages/Home.css';
 
 export default function Home() {
   const { user } = useAuth();
@@ -42,7 +41,7 @@ export default function Home() {
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-hero__content">
             <p className="home-eyebrow">Momentum Training System</p>
-            <h1 id="home-title">Feel your progress move.</h1>
+            <h1 id="home-title">Feel your progress <em>move.</em></h1>
             <p className="home-lead">
               Log. Review. Adapt. A focused flow that turns workouts into visible momentum.
             </p>
@@ -104,7 +103,7 @@ export default function Home() {
             <div className="home-quality-item">Fast entry for lifting and cardio sessions</div>
             <div className="home-quality-item">Clean history you can skim in seconds</div>
             <div className="home-quality-item">Progress charts with clear trend signals</div>
-            <div className="home-quality-item">Black and off-white UI that stays focused</div>
+            <div className="home-quality-item">Dark UI that keeps your numbers in focus</div>
           </div>
         </section>
 
